@@ -20,21 +20,21 @@ def main():
     # Combine datasets
     combinedStats = pd.concat([stats2018, stats2019, stats2020, stats2021, stats2022, stats2023], axis=0)
 
-    djMoore = combinedStats[combinedStats['player_display_name'] == 'D.J. Moore']
-    tyLocket = combinedStats[combinedStats['player_display_name'] == 'Tyler Lockett']
-    tyHill = combinedStats[combinedStats['player_display_name'] == 'Tyreek Hill']
-    
+    #Filter data for the three players
+    players = ['D.J. Moore', 'Tyler Lockett', 'Tyreek Hill']
+    player_data = combinedStats[combinedStats['player_display_name'].isin(players)]
+
+    #Features and target
     features = ['receptions', 'targets', 'receiving_yards']
     target = 'receiving_tds'
 
-    djMooreFeatures = djMoore[features]
-    djMooreTarget = djMoore[target]
-    tyLocketFeatures = tyLocket[features]
-    tyLocketTarget = tyLocket[target]
-    tyHillFeatures = tyHill[features]
-    tyHillTarget = tyHill[target]
-
-    print(djMooreFeatures)
+    #Data for each player
+    for player in players:
+        print(f"\nData for {player}:")
+        player_features = player_data[player_data['player_display_name'] == player][features]
+        player_target = player_data[player_data['player_display_name'] == player][target]
+        print("Features:\n", player_features)
+        print("Target:\n", player_target)
 
 
 
