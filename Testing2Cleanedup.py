@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 
 def allPlayers(player_name, combinedStats, stats2024, features, target):
@@ -44,7 +45,12 @@ def allPlayers(player_name, combinedStats, stats2024, features, target):
     print("Training R^2 Score:", DTR.score(X_train, y_train))
     print("Predicted Receiving Yards:", DTR.predict(playerNew))
 
-
+    #(SVR)
+    print("\nModel 4: Support Vector Regression (SVR)")
+    svr = SVR(kernel='rbf', C=1.0, epsilon=0.1)
+    svr.fit(X_train, y_train)
+    svrPrediction = svr.predict(playerNew)
+    print("Predicted Receiving Yards:", svrPrediction)
 def main():
    
     stats_files = [
