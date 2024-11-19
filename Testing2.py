@@ -4,144 +4,119 @@ import numpy as np
 
 #Diagram/Plotting libraries
 import matplotlib.pyplot as plt
-import seaborn as sns #Plotting library #pip install seaborn
+import seaborn as sns  #Plotting library
 
-#sklearn libraries ->pip install scikit-learn
-from sklearn.linear_model import LogisticRegression 
+#sklearn libraries
+from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
-from sklearn.svm import SVR
-
-#Data pre-processing libraries
 from sklearn.model_selection import train_test_split
-import missingno as msno #Library to drop missing data #pip install missingno 
+from sklearn.metrics import mean_squared_error, r2_score
+
+#data pre-processing library
+import missingno as msno  #Library to visualize missing data
+
+
+def load_data():
+    try:
+        #Load CSV files
+        stats2018 = pd.read_csv("player_stats_2018.csv")
+        stats2019 = pd.read_csv("player_stats_2019.csv")
+        stats2020 = pd.read_csv("player_stats_2020.csv")
+        stats2021 = pd.read_csv("player_stats_2021.csv")
+        stats2022 = pd.read_csv("player_stats_2022.csv")
+        stats2023 = pd.read_csv("player_stats_2023.csv")
+        stats2024 = pd.read_csv("player_stats_2024.csv")  #For testing
+
+        #Combine datasets
+        combined_stats = pd.concat([stats2018, stats2019, stats2020, stats2021, stats2022, stats2023], axis=0)
+        return combined_stats, stats2024
+    except FileNotFoundError as e:
+        print(f"Error loading data: {e}")
+        exit()
+
+
+def preprocess_data(data):
+
+    #Visualize missing data, a bit confused on the output
+    msno.matrix(data)
+    plt.show()
+    
+    #Drop rows with missing target values
+    data = data.dropna(subset=['receiving_yards'])
+
+    #Fill missing features with zeros
+    data = data.fillna(0)
+    return data
+
+
+def evaluate_model(model, X_test, y_test, model_name):
+ 
+    predictions = model.predict(X_test)
+    mse = mean_squared_error(y_test, predictions)
+    r2 = r2_score(y_test, predictions)
+    print(f"{model_name} Performance:")
+    print(f"Mean Squared Error: {mse:.2f}")
+    print(f"R2 Score: {r2:.2f}")
+    return predictions
+
 
 def main():
+    #Load data
+    combined_stats, stats2024 = load_data()
 
-    #Importing data set:
-    # Load CSV files
-    stats2018 = pd.read_csv("player_stats_2018.csv")
-    stats2019 = pd.read_csv("player_stats_2019.csv")
-    stats2020 = pd.read_csv("player_stats_2020.csv")
-    stats2021 = pd.read_csv("player_stats_2021.csv")
-    stats2022 = pd.read_csv("player_stats_2022.csv")
-    stats2023 = pd.read_csv("player_stats_2023.csv")
-    #For testing, but not used in learning
-    stats2024 = pd.read_csv("player_stats_2024.csv") 
+    #Filter player-specific data
+    players = ['D.J. Moore', 'Tyler Lockett', 'Tyreek Hill']
+    stats2024 = stats2024[stats2024['player_display_name'].isin(players)]
 
-    # Combine datasets
-    combinedStats = pd.concat([stats2018, stats2019, stats2020, stats2021, stats2022, stats2023], axis=0)
+    #Preprocess data
+    combined_stats = preprocess_data(combined_stats)
 
-    djMoore = combinedStats[combinedStats['player_display_name'] == 'D.J. Moore']
-    djMooreNewStats = stats2024[stats2024['player_display_name'] == 'D.J. Moore']
-    tyLocket = combinedStats[combinedStats['player_display_name'] == 'Tyler Lockett']
-    tyHill = combinedStats[combinedStats['player_display_name'] == 'Tyreek Hill']
-    
+    #Features and target
     features = ['receptions', 'targets', 'receiving_tds']
     target = 'receiving_yards'
 
-    djMooreFeatures = djMoore[features]
-    djMooreTarget = djMoore[target]
-    djMooreNew = djMooreNewStats[features]
-    tyLocketFeatures = tyLocket[features]
-    tyLocketTarget = tyLocket[target]
-    tyHillFeatures = tyHill[features]
-    tyHillTarget = tyHill[target]
+    for player in players:
+        print(f"\nAnalyzing data for {player}...")
+        player_data = combined_stats[combined_stats['player_display_name'] == player]
+        player_new_stats = stats2024[stats2024['player_display_name'] == player]
 
-    print(djMooreFeatures)
+        if player_data.empty:
+            print(f"No data available for {player}. Skipping...")
+            continue
 
-    #####NOT IMPLEMENTED#####
-    #Setting aside data for cross validation 
-    # Set aside 10% of instances for testing
-    djMooreX_train, djMooreX_test, djMoorey_train, djMoorey_test = train_test_split(djMooreFeatures, djMooreTarget, test_size=0.1, random_state=42)
+        X = player_data[features]
+        y = player_data[target]
+        X_new = player_new_stats[features]
 
-    # Split training again into 70% training and 20% validation
-    djMooreX_train, djMooreX_val, djMoorey_train, djMoorey_val = train_test_split(djMooreX_train, djMoorey_train, test_size=0.2/(1-0.1), random_state=42)  
+        #Split data for training and testing
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 
+        #Logistic Regression
+        logistic_model = LogisticRegression(max_iter=1000)
+        logistic_model.fit(X_train, y_train)
+        evaluate_model(logistic_model, X_test, y_test, "Logistic Regression")
 
-    #####Model 1, Logistic Regression:#####
-    # Initialize a logistic regression model
-    logisticModel = LogisticRegression(penalty=None)
+        #K-Nearest Neighbors Regression
+        knnr = KNeighborsRegressor(n_neighbors=5)
+        knnr.fit(X_train, y_train)
+        evaluate_model(knnr, X_test, y_test, "K-Nearest Neighbors Regression")
 
-    # Fit the model
-    logisticModel.fit(djMooreFeatures, np.ravel(djMooreTarget))
+        #Predict future performance
+        knnr_prediction = knnr.predict(X_new)
+        print(f"Future predictions for {player}: {knnr_prediction}")
 
-    # Print data for model 1
-    print("Model 1: Logistic Regression")
-    print('w1:', logisticModel.coef_)
-    print('w0:', logisticModel.intercept_)
-    #####Model 1 END#####
+        #Decision Tree Regression
+        dtr = DecisionTreeRegressor(max_depth=4, random_state=42)
+        dtr.fit(X_train, y_train)
+        evaluate_model(dtr, X_test, y_test, "Decision Tree Regression")
 
-
-    #####Model 2, K-means Regression:#####
-    print("Model 2: K-Nearest Regression")
-    # Initialize a logistic regression model giving it the number of k features
-    knnr = KNeighborsRegressor(n_neighbors=5)
-    # Fit the model
-    knnrFit = knnr.fit(djMooreFeatures, djMooreTarget)
-    #Predict a value giving it new X data
-    knnrPrediction = knnrFit.predict(djMooreNew)
-    print("Prediction", knnrPrediction)
-    #Returns the nearest neighbors distances and indices for each intance in Xnew
-    knnrNeighbors = knnrFit.kneighbors(djMooreNew)
-    print("Nearest instances: ", knnrNeighbors)
-    #####Model 2 END#####
-
-
-    #####Model 3, Decision Trees for Regression:#####
-    print("Model 3: Decision Trees for Regression")
-    DTR = DecisionTreeRegressor(max_depth=4, ccp_alpha=0.9, random_state=123)
-    #DTR = DecisionTreeRegressor(max_depth=2)
-    #DTR = DecisionTreeRegressor(ccp_alpha=0.00)
-    #DTR = DecisionTreeRegressor(max_leaf_nodes=10, min_samples_leaf=20)
-
-    #Fit the model 
-    DTR.fit(djMooreFeatures,djMooreTarget) 
-
-    #Score the data
-    DTR.score(djMooreFeatures, djMooreTarget) #Prints the r-squared value for the training set
-
-    #Predict values given a new X
-    DTR.predict(djMooreNew) #Predict values using new X-values
-    #####Model 3 END#####
-
-
-    # #Model 4, SVM-Support Vector Machines
-    # print("Model 4: SVM")
-    # eps = 0.1
-    # #Linear SVM machine 
-    # print("SVM: Linear")
-    # svr_lin = SVR(kernel='linear', epsilon=eps)
-    # #Fit the model
-    # svr_lin.fit(np.reshape(djMooreFeatures,(-1,1)), np.ravel(djMooreTarget))
-    # #Get the coefficient
-    # svr_lin.coef_[0][0] 
-    # #Get the intercept
-    # svr_lin.intercept_[0]
-
-    # svr_lin.predict(np.reshape(djMooreNew,(-1,1)))
-
-    # #Polynomial SVM machine
-    # print("SVM: Polynomial")
-    # svr_poly = SVR(kernel='poly', epsilon=eps, C=0.2, gamma=0.8)
-    # svr_poly.fit(np.reshape(djMooreFeatures,(-1,1)), np.ravel(djMooreTarget))
-    # #Get the coefficient
-    # svr_poly.coef_[0][0] 
-    # #Get the intercept
-    # svr_poly.intercept_[0]
-
-    # svr_poly.predict(np.reshape(djMooreNew,(-1,1)))
-    
-    # #rbf SVM machine
-    # print("SVM: rbf")
-    # svr_rbf = SVR(kernel='rbf', epsilon=eps, C=0.2, gamma=0.8)
-    # svr_rbf.fit(np.reshape(djMooreFeatures,(-1,1)), np.ravel(djMooreTarget))
-    # #Get the coefficient
-    # svr_rbf.coef_[0][0] 
-    # #Get the intercept
-    # svr_rbf.intercept_[0]
-
-    # svr_rbf.predict(np.reshape(djMooreNew,(-1,1)))
+        #Visualize tree if desired
+        from sklearn.tree import plot_tree
+        plt.figure(figsize=(12, 8))
+        plot_tree(dtr, filled=True, feature_names=features, rounded=True)
+        plt.title(f"Decision Tree for {player}")
+        plt.show()
 
 
 if __name__ == "__main__":
