@@ -6,6 +6,23 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 
+def evaluate_model(model, X_test, y_test, model_name):
+ 
+    predictions = model.predict(X_test)
+    mae = mean_absolute_error(y_test, predictions)
+    mse = mean_squared_error(y_test, predictions)
+    rmse = np.sqrt(mse)  # Root Mean Squared Error
+    r2 = r2_score(y_test, predictions)
+
+    # Print the evaluation results
+    print(f"{model_name} Performance:")
+    print(f"Mean Absolute Error: {mae:.2f}")
+    print(f"Mean Squared Error: {mse:.2f}")
+    print(f"Root Mean Squared Error: {rmse:.2f}")
+    print(f"R2 Score: {r2:.2f}")
+    return predictions
+
+
 def allPlayers(player_name, combinedStats, stats2024, features, target):
     print(f"\n--- {player_name} ---")
 
