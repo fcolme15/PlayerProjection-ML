@@ -117,6 +117,14 @@ def main():
         dtr.fit(X_train, y_train)
         evaluate_model(dtr, X_test, y_test, "Decision Tree Regression")
 
+        svr = SVR(kernel='rbf', C=100, epsilon=0.1)  # You can tweak the parameters if needed
+        svr.fit(X_train, y_train)
+        evaluate_model(svr, X_test, y_test, "Support Vector Regression")
+
+        # Predict future performance with SVR
+        svr_prediction = svr.predict(X_new)
+        print(f"Future predictions for {player} with SVR: {svr_prediction}")
+        
         #Visualize tree if desired
         from sklearn.tree import plot_tree
         plt.figure(figsize=(12, 8))
