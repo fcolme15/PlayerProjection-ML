@@ -7,14 +7,28 @@ from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-#Function to evaluate models
-def evaluate_model(model, X_test, y_test, model_name):
+#Store results summary
+model_summary = []
+
+#evaluate models
+def evaluate_model(model, X_test, y_test, model_name, player_name):
     predictions = model.predict(X_test)
     mae = mean_absolute_error(y_test, predictions)
     mse = mean_squared_error(y_test, predictions)
     rmse = np.sqrt(mse)
     r2 = r2_score(y_test, predictions)
 
+    #results summary
+    model_summary.append({
+        "Player": player_name,
+        "Model": model_name,
+        "MAE": mae,
+        "MSE": mse,
+        "RMSE": rmse,
+        "R2": r2
+    })
+
+    #Print individual model performance
     print(f"{model_name} Performance:")
     print(f"Mean Absolute Error: {mae:.2f}")
     print(f"Mean Squared Error: {mse:.2f}")
@@ -38,7 +52,6 @@ def allPlayers(player_name, combinedStats, stats2024, features, target):
     #Features and target
     playerFeatures = playerStats[features].astype(float)
     playerTarget = playerStats[target].astype(float)
-    playerNew = playerNewStats[features].astype(float)
 
     #Check if features or target are empty
     if len(playerFeatures) == 0 or len(playerTarget) == 0:
@@ -57,7 +70,7 @@ def allPlayers(player_name, combinedStats, stats2024, features, target):
 
     #Logistic Regression (Classification)
     print("\nModel 1: Logistic Regression (Classification)")
-    logisticTarget = (playerTarget > 50).astype(int)  
+    logisticTarget = (playerTarget > 50).astype(int)
     if len(np.unique(logisticTarget)) < 2:
         print(f"Skipping Logistic Regression: only one class in the target data for {player_name}.")
     else:
@@ -68,35 +81,24 @@ def allPlayers(player_name, combinedStats, stats2024, features, target):
 
     #K-Nearest Neighbors Regression
     print("\nModel 2: K-Nearest Regression")
-    if len(playerNew) == 0:
-        print(f"Skipping K-Nearest Regression: no 2024 data available for {player_name}.")
-    else:
-        knnr = KNeighborsRegressor(n_neighbors=5)
-        knnr.fit(X_train, y_train)
-        knnrPrediction = knnr.predict(playerNew)
-        print("Predicted Receiving Yards:", knnrPrediction)
+    knnr = KNeighborsRegressor(n_neighbors=5)
+    knnr.fit(X_train, y_train)
+    evaluate_model(knnr, X_test, y_test, "KNN Regression", player_name)
 
     #Decision Tree Regression
     print("\nModel 3: Decision Tree Regression")
-    if len(X_train) == 0 or len(y_train) == 0:
-        print(f"Skipping Decision Tree Regression: insufficient training data for {player_name}.")
-    else:
-        DTR = DecisionTreeRegressor(max_depth=4, random_state=123)
-        DTR.fit(X_train, y_train)
-        print("Training R^2 Score:", DTR.score(X_train, y_train))
-        print("Predicted Receiving Yards:", DTR.predict(playerNew) if len(playerNew) > 0 else "No 2024 data available.")
+    DTR = DecisionTreeRegressor(max_depth=4, random_state=123)
+    DTR.fit(X_train, y_train)
+    evaluate_model(DTR, X_test, y_test, "Decision Tree Regression", player_name)
 
     #Support Vector Regression (SVR)
     print("\nModel 4: Support Vector Regression (SVR)")
-    if len(X_train) == 0 or len(y_train) == 0 or len(playerNew) == 0:
-        print(f"Skipping Support Vector Regression: insufficient data for {player_name}.")
-    else:
-        svr = SVR(kernel='rbf', C=1.0, epsilon=0.1)
-        svr.fit(X_train, y_train)
-        svrPrediction = svr.predict(playerNew)
-        print("Predicted Receiving Yards:", svrPrediction)
+    svr = SVR(kernel='rbf', C=1.0, epsilon=0.1)
+    svr.fit(X_train, y_train)
+    evaluate_model(svr, X_test, y_test, "SVR", player_name)
 
-# Main function
+
+#Main function
 def main():
     stats_files = [
         "player_stats_2018.csv", "player_stats_2019.csv",
@@ -107,7 +109,7 @@ def main():
     stats2024 = pd.read_csv("player_stats_2024.csv")
 
     #Enter Names
-    print("Enter the names of three players to analyze (separated by commas):")
+    print("Enter the names of the players to analyze (separated by commas):")
     input_players = input().split(",")
     players = [player.strip() for player in input_players]
 
@@ -115,9 +117,42 @@ def main():
     features = ['receptions', 'targets', 'receiving_tds']
     target = 'receiving_yards'
 
-    #Output
+    #Output for each player
     for player_name in players:
         allPlayers(player_name, combinedStats, stats2024, features, target)
+
+    #Summary of all models
+    if model_summary:
+        print("\n--- Model Performance Summary ---")
+        summary_df = pd.DataFrame(model_summary)
+        print(summary_df)
+
+        #save summary to CSV
+        summary_df.to_csv("performanceSummary.csv", index=False)
+        print("Summary saved to 'performanceSummary.csv'.")
+
+        
+        # print("\n--- Best Model for Each Player ---")
+        # for player in summary_df['Player'].unique():
+        #     player_df = summary_df[summary_df['Player'] == player]
+        #     best_model = player_df.loc[player_df['R2'].idxmax()]  # Highest R²
+        #     print(f"Player: {player}")
+        #     print(f"Best Model: {best_model['Model']}")
+        #     print(f"R² Score: {best_model['R2']:.2f}")
+        #     print(f"RMSE: {best_model['RMSE']:.2f}")
+        #     print("-" * 40)
+
+        # #Determine overall best model
+        # print("\n--- Overall Best Model ---")
+        # best_overall = summary_df.loc[summary_df['R2'].idxmax()]
+        # print(f"Player: {best_overall['Player']}")
+        # print(f"Best Model: {best_overall['Model']}")
+        # print(f"R² Score: {best_overall['R2']:.2f}")
+        # print(f"RMSE: {best_overall['RMSE']:.2f}")
+
+# Run the main function
+if __name__ == "__main__":
+    main()
 
 
 #Run the main function
